@@ -11,14 +11,14 @@ export const getGeminiClient = (apiKey) => {
 // Generar embeddings usando el modelo de embeddings de Gemini
 export const generateEmbedding = async (text, apiKey) => {
   const genAI = getGeminiClient(apiKey);
-  // Usamos text-embedding-004 (Es el estándar actual para mayor precisión)
-  const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+  // Usamos gemini-embedding-2 que es el confirmado para esta API Key
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
   
   try {
     const result = await model.embedContent(text);
     return result.embedding.values; 
   } catch (error) {
-    console.error("Error generating embedding with text-embedding-004:", error.message);
+    console.error("Error generating embedding with gemini-embedding-2:", error.message);
     throw error;
   }
 };
