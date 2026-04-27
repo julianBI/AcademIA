@@ -1,40 +1,34 @@
 -- =====================================================================
--- FIX CRÍTICO: Ajustar dimensión del vector al modelo gemini-embedding-2
--- gemini-embedding-2 produce vectores de 3072 dimensiones por defecto.
--- El schema anterior usaba 768, causando que los embeddings se DESCARTARAN.
+-- FIX RAG: Limpiar chunks con embeddings incorrectos y resetear el índice.
+-- El código ahora usa outputDimensionality: 768 en gemini-embedding-2
+-- por lo que el esquema vector(768) es correcto.
 -- Ejecutar en el SQL Editor de Supabase.
 -- =====================================================================
 
--- 1. Borrar el índice anterior (incompatible con el cambio de tipo)
+-- 1. Borrar el índice existente para recrearlo limpio
 DROP INDEX IF EXISTS document_chunks_embedding_idx;
 
--- 2. Borrar todos los chunks existentes (tienen embeddings con dimensiones incorrectas)
+-- 2. Borrar TODOS los chunks almacenados (tenían dimensiones incorrectas)
 TRUNCATE TABLE document_chunks;
 
--- 3. Alterar la columna al tamaño correcto para gemini-embedding-2
+-- 3. Asegurar que la columna sea vector(768)
 ALTER TABLE document_chunks 
-  ALTER COLUMN embedding TYPE vector(3072);
+  ALTER COLUMN embedding TYPE vector(768);
 
--- 4. Recrear el índice con las dimensiones correctas
+-- 4. Recrear el índice HNSW (768 está dentro del límite de 2000)
 CREATE INDEX document_chunks_embedding_idx
   ON document_chunks
   USING hnsw (embedding vector_cosine_ops);
 
--- 5. Actualizar la función RPC para que acepte el nuevo tamaño de vector
+-- 5. Actualizar la función RPC de búsqueda
 CREATE OR REPLACE FUNCTION match_document_chunks(
-  query_embedding vector(3072),
+  query_embedding vector(768),
   match_threshold float,
   match_count int,
   p_subject_id UUID
 )
-RETURNS TABLE (
-  id UUID,
-  document_id UUID,
-  content TEXT,
-  similarity float
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
+RETURNS TABLE (id UUID, document_id UUID, content TEXT, similarity float)
+LANGUAGE plpgsql SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
@@ -51,7 +45,7 @@ BEGIN
 END;
 $$;
 
--- Verificación: debe mostrar 3072
-SELECT column_name, data_type, udt_name 
-FROM information_schema.columns 
+-- Verificar dimensión final (debe mostrar vector(768))
+SELECT column_name, udt_name
+FROM information_schema.columns
 WHERE table_name = 'document_chunks' AND column_name = 'embedding';

@@ -11,16 +11,18 @@ export const getGeminiClient = (apiKey) => {
 // Generar embeddings usando el modelo de embeddings de Gemini
 export const generateEmbedding = async (text, apiKey) => {
   const genAI = getGeminiClient(apiKey);
-  // Usamos gemini-embedding-2 que es el confirmado para esta API Key
+  // gemini-embedding-2 produce 3072 dims por defecto, pero HNSW en pgvector
+  // solo soporta hasta 2000. Reducimos a 768 con outputDimensionality.
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
   
-  try {
-    const result = await model.embedContent(text);
-    return result.embedding.values; 
-  } catch (error) {
-    console.error("Error generating embedding with gemini-embedding-2:", error.message);
-    throw error;
-  }
+  const result = await model.embedContent({
+    content: { parts: [{ text }], role: "user" },
+    outputDimensionality: 768,
+  });
+
+  const values = result.embedding.values;
+  console.log(`[Embedding] Dims: ${values.length}`);
+  return values;
 };
 
 // Generar respuesta de Chat RAG — retorna el stream iterable
