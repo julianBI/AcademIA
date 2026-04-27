@@ -1,107 +1,135 @@
-import { createClient } from "@/lib/supabase/server";
-import { BookOpen, Clock, Target, Plus } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { BookOpen, Plus, Clock, FileText, Brain, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import CreateSubjectModal from "@/components/subjects/CreateSubjectModal";
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function DashboardPage() {
+  const [subjects, setSubjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // En el futuro:
-  // const { data: subjects } = await supabase.from('subjects').select('*').eq('user_id', user.id);
-  // Por ahora usaremos datos de prueba para construir la interfaz.
-  const subjects = [
-    { id: "11111111-1111-1111-1111-111111111111", name: "Estructura de Datos", color: "#DB93B0", documentCount: 4, studyTime: 120 },
-    { id: "22222222-2222-2222-2222-222222222222", name: "Física Universitaria", color: "#77A0A9", documentCount: 2, studyTime: 45 },
-    { id: "33333333-3333-3333-3333-333333333333", name: "Cálculo Integral", color: "#16697A", documentCount: 8, studyTime: 210 },
-  ];
+  const fetchSubjects = async () => {
+    try {
+      const res = await fetch("/api/subjects");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSubjects(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubjects();
+  }, []);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-brand-taupe">Hola, Estudiante 👋</h1>
-        <p className="text-brand-steel mt-2">Aquí tienes un resumen de tu progreso académico.</p>
+    <div className="space-y-10 animate-in fade-in duration-500">
+      {/* Header / Saludo */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-black text-brand-taupe tracking-tight">
+            ¡Hola de nuevo! 👋
+          </h1>
+          <p className="text-lg text-brand-steel mt-2">
+            ¿Qué vamos a aprender hoy en AcademIA?
+          </p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center gap-2 bg-brand-teal text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-[#0e4f5c] transition-all shadow-sm hover:shadow-md active:scale-95"
+        >
+          <Plus className="h-6 w-6" /> Nueva Materia
+        </button>
       </div>
 
-      {/* Tarjetas de Métricas Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-brand-steel/20 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-brand-pink/20 flex items-center justify-center text-brand-pink">
-            <BookOpen className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm text-brand-steel font-medium">Materias Activas</p>
-            <p className="text-2xl font-bold text-brand-taupe">{subjects.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-brand-steel/20 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-brand-teal/10 flex items-center justify-center text-brand-teal">
-            <Clock className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm text-brand-steel font-medium">Tiempo de Estudio</p>
-            <p className="text-2xl font-bold text-brand-taupe">6h 15m</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-brand-steel/20 shadow-sm flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-brand-steel/20 flex items-center justify-center text-brand-steel">
-            <Target className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-sm text-brand-steel font-medium">Promedio Cuestionarios</p>
-            <p className="text-2xl font-bold text-brand-taupe">85%</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista de Materias */}
-      <div>
+      {/* Grid de Materias */}
+      <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-brand-taupe">Tus Materias</h2>
-          <button className="flex items-center gap-2 bg-brand-teal text-white px-4 py-2 rounded-lg hover:bg-[#0e4f5c] transition-colors text-sm font-medium">
-            <Plus className="h-4 w-4" /> Nueva Materia
-          </button>
+          <h2 className="text-2xl font-black text-brand-taupe">Mis Materias</h2>
+          <Link href="/subjects" className="text-brand-teal font-bold hover:underline flex items-center gap-1">
+            Ver todas <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subject) => (
-            <Link 
-              key={subject.id} 
-              href={`/subjects/${subject.id}`}
-              className="bg-white rounded-2xl border border-brand-steel/20 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-brand-steel">
+            <Loader2 className="h-10 w-10 animate-spin mb-4" />
+            <p>Cargando tus materias...</p>
+          </div>
+        ) : subjects.length === 0 ? (
+          <div className="bg-white border-2 border-dashed border-brand-steel/20 rounded-3xl p-12 text-center">
+            <div className="h-16 w-16 bg-brand-blush/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <BookOpen className="h-8 w-8 text-brand-taupe" />
+            </div>
+            <h3 className="text-xl font-bold text-brand-taupe mb-2">Aún no tienes materias</h3>
+            <p className="text-brand-steel mb-8 max-w-sm mx-auto">
+              Crea tu primera materia para empezar a subir documentos y chatear con el Tutor IA.
+            </p>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-brand-teal text-white px-6 py-3 rounded-xl font-bold hover:bg-[#0e4f5c] transition-colors"
             >
-              <div 
-                className="h-24 w-full"
-                style={{ backgroundColor: subject.color }}
-              ></div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-brand-taupe mb-1 group-hover:text-brand-teal transition-colors">
+              Comenzar Ahora
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {subjects.map((subject) => (
+              <Link 
+                key={subject.id} 
+                href={`/subjects/${subject.id}`}
+                className="group bg-white p-6 rounded-3xl border border-brand-steel/10 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                <div 
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 text-white shadow-inner"
+                  style={{ backgroundColor: subject.color }}
+                >
+                  <BookOpen className="h-7 w-7" />
+                </div>
+                <h3 className="text-2xl font-black text-brand-taupe mb-4 group-hover:text-brand-teal transition-colors">
                   {subject.name}
                 </h3>
-                <div className="flex items-center gap-4 text-sm text-brand-steel mt-4">
-                  <div className="flex items-center gap-1">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{subject.documentCount} docs</span>
+                <div className="flex items-center gap-4 text-sm font-bold text-brand-steel">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-4 w-4" /> 0 docs
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{Math.floor(subject.studyTime / 60)}h {subject.studyTime % 60}m</span>
+                  <div className="flex items-center gap-1.5 text-brand-pink">
+                    <Clock className="h-4 w-4" /> 0 min
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
-          {/* Placeholder para agregar nueva materia */}
-          <button className="bg-brand-blush/10 rounded-2xl border-2 border-dashed border-brand-steel/30 flex flex-col items-center justify-center text-brand-steel hover:text-brand-teal hover:border-brand-teal hover:bg-brand-teal/5 transition-all min-h-[200px]">
-            <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-3">
-              <Plus className="h-6 w-6" />
-            </div>
-            <span className="font-medium">Crear nueva materia</span>
-          </button>
+      {/* Sugerencias IA */}
+      <section className="bg-brand-taupe text-white p-8 rounded-[2.5rem] relative overflow-hidden shadow-2xl">
+        <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+          <div className="h-20 w-20 bg-brand-pink rounded-3xl flex items-center justify-center rotate-6 shadow-lg shrink-0">
+            <Brain className="h-10 w-10 text-brand-taupe" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black mb-2">Consejo AcademIA</h2>
+            <p className="text-brand-blush/80 text-lg leading-relaxed max-w-2xl">
+              "Para un mejor aprendizaje, intenta preguntarle al Tutor IA sobre los conceptos que más te cuestan. Usa la técnica **Socrática** para profundizar en los fundamentos."
+            </p>
+          </div>
         </div>
-      </div>
+        <div className="absolute top-0 right-0 h-40 w-40 bg-white/5 rounded-full -mr-20 -mt-20"></div>
+      </section>
+
+      <CreateSubjectModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchSubjects}
+      />
     </div>
   );
 }
