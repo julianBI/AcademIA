@@ -1,6 +1,3 @@
-import pdfParse from "pdf-parse";
-import mammoth from "mammoth";
-
 export async function extractTextFromFile(file) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type;
@@ -8,6 +5,7 @@ export async function extractTextFromFile(file) {
 
   try {
     if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
+      const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
       const data = await pdfParse(buffer);
       return data.text;
     } 
@@ -16,6 +14,7 @@ export async function extractTextFromFile(file) {
       mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
       fileName.endsWith(".docx")
     ) {
+      const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
     }
