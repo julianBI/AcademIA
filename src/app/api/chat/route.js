@@ -40,8 +40,8 @@ export async function POST(req) {
     // 3. Buscar los chunks más relevantes en Supabase (Similarity Search via pgvector)
     const { data: relevantChunks, error: rpcError } = await supabase.rpc('match_document_chunks', {
       query_embedding: queryEmbedding,
-      match_threshold: 0.3, // Ajustable según necesidad (0.0 a 1.0)
-      match_count: 5,       // Top 5 chunks más relevantes
+      match_threshold: 0.1, // Más permisivo para encontrar información
+      match_count: 10,      // Top 10 chunks para más contexto
       p_subject_id: subjectId
     });
 

@@ -23,12 +23,14 @@ export async function POST(req) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Usar la clave del servidor para los embeddings por defecto (o implementa la lógica para leer del profile)
-    // Asegúrate de definir GEMINI_API_KEY en tu .env.local
-    const apiKey = process.env.GEMINI_API_KEY; 
+    // Usar la clave del usuario guardada en la base de datos
+    const { getUserGeminiKey } = await import("@/lib/encryption");
+    const apiKey = await getUserGeminiKey(supabase, user.id);
 
     if (!apiKey) {
-      return NextResponse.json({ error: "No hay API Key de Gemini configurada en el servidor para procesar documentos." }, { status: 500 });
+      return NextResponse.json({ 
+        error: "Debes configurar tu API Key de Gemini en los ajustes antes de subir documentos." 
+      }, { status: 400 });
     }
 
     // 2. Extraer texto del archivo
