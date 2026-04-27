@@ -6,7 +6,7 @@ import { UploadCloud, File, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-export default function FileUploader({ subjectId }) {
+export default function FileUploader({ subjectId, onUploadSuccess }) {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState(null);
@@ -52,7 +52,12 @@ export default function FileUploader({ subjectId }) {
 
       toast.success(`Documento procesado: ${data.chunksCreated} fragmentos creados.`);
       setFile(null);
-      router.refresh(); // Actualiza la lista de documentos
+      
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+      
+      router.refresh(); // Actualiza la lista de documentos en el servidor
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -62,8 +67,6 @@ export default function FileUploader({ subjectId }) {
 
   return (
     <div className="bg-white rounded-2xl border border-brand-steel/20 shadow-sm p-6">
-      <h3 className="text-lg font-bold text-brand-taupe mb-4">Añadir Nuevo Material</h3>
-      
       {!file ? (
         <div 
           {...getRootProps()} 
