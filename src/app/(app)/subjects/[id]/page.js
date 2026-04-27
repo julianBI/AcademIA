@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, MessageSquare, BookOpen, FileText, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import FileUploader from "@/components/documents/FileUploader";
 
 export default function SubjectDetailPage({ params }) {
