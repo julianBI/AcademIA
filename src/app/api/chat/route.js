@@ -45,6 +45,11 @@ export async function POST(req) {
       p_subject_id: subjectId
     });
 
+    console.log(`[RAG Debug] Chunks encontrados: ${relevantChunks?.length || 0}`);
+    if (relevantChunks && relevantChunks.length > 0) {
+      console.log(`[RAG Debug] Similitud máxima: ${relevantChunks[0].similarity}`);
+    }
+
     if (rpcError) {
       return NextResponse.json({ error: "Error en búsqueda vectorial: " + rpcError.message }, { status: 500 });
     }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Plus, Search, Loader2 } from "lucide-react";
+import { BookOpen, Plus, Search, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import CreateSubjectModal from "@/components/subjects/CreateSubjectModal";
 
 export default function SubjectsPage() {
@@ -28,6 +29,24 @@ export default function SubjectsPage() {
   useEffect(() => {
     fetchSubjects();
   }, []);
+
+  const handleDeleteSubject = async (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm("¿Estás seguro de que quieres eliminar esta materia? Se borrarán todos los documentos y chats asociados.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/subjects?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
+      toast.success("Materia eliminada");
+      fetchSubjects();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   const filteredSubjects = subjects.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -77,8 +96,15 @@ export default function SubjectsPage() {
             <Link 
               key={subject.id} 
               href={`/subjects/${subject.id}`}
-              className="group bg-white p-6 rounded-3xl border border-brand-steel/10 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all"
+              className="group relative bg-white p-6 rounded-3xl border border-brand-steel/10 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all"
             >
+              <button
+                onClick={(e) => handleDeleteSubject(e, subject.id)}
+                className="absolute top-4 right-4 p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+
               <div 
                 className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 text-white"
                 style={{ backgroundColor: subject.color }}
@@ -89,9 +115,9 @@ export default function SubjectsPage() {
                 {subject.name}
               </h3>
               <div className="flex items-center justify-between text-sm text-brand-steel">
-                <span>0 Documentos</span>
+                <span>Materia de estudio</span>
                 <span>•</span>
-                <span>Creada el {new Date(subject.created_at).toLocaleDateString()}</span>
+                <span>{new Date(subject.created_at).toLocaleDateString()}</span>
               </div>
             </Link>
           ))}

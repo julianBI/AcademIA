@@ -5,7 +5,9 @@ export async function extractTextFromFile(file) {
 
   try {
     if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
-      const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+      const pdf = await import("pdf-parse");
+      // Algunos entornos requieren .default, otros no. Manejamos ambos.
+      const pdfParse = pdf.default || pdf;
       const data = await pdfParse(buffer);
       return data.text;
     } 

@@ -48,6 +48,19 @@ export default function SubjectDetailPage({ params }) {
     fetchData();
   }, [subjectId]);
 
+  const handleDeleteDoc = async (id) => {
+    if (!confirm("¿Borrar este documento?")) return;
+    
+    try {
+      const res = await fetch(`/api/documents?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
+      toast.success("Documento eliminado");
+      fetchData();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -144,6 +157,13 @@ export default function SubjectDetailPage({ params }) {
                       </p>
                     </div>
                   </div>
+
+                  <button 
+                    onClick={() => handleDeleteDoc(doc.id)}
+                    className="p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
                 </div>
               ))}
             </div>
