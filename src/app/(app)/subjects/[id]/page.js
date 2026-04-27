@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageSquare, BookOpen, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, BookOpen, FileText, Loader2, Trash2 } from "lucide-react";
 import FileUploader from "@/components/documents/FileUploader";
 
 export default function SubjectDetailPage({ params }) {
