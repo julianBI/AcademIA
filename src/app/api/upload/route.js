@@ -1,8 +1,11 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractTextFromFile } from "@/lib/rag/extractor";
 import { createChunks } from "@/lib/rag/chunker";
 import { generateEmbedding } from "@/lib/gemini/client";
+import { getUserGeminiKey } from "@/lib/encryption";
 
 export async function POST(req) {
   try {
@@ -24,7 +27,6 @@ export async function POST(req) {
     }
 
     // Usar la clave del usuario guardada en la base de datos
-    const { getUserGeminiKey } = await import("@/lib/encryption");
     const apiKey = await getUserGeminiKey(supabase, user.id);
 
     if (!apiKey) {

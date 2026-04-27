@@ -23,15 +23,15 @@ export const generateEmbedding = async (text, apiKey) => {
   }
 };
 
-// Generar respuesta de Chat RAG
+// Generar respuesta de Chat RAG — retorna el stream iterable
 export const generateChatResponse = async (prompt, systemInstruction, apiKey) => {
   const genAI = getGeminiClient(apiKey);
-  const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.5-flash",
-    systemInstruction
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction,
   });
 
-  // Usamos sendMessageStream para la respuesta progresiva
   const result = await model.generateContentStream(prompt);
+  // result.stream es un AsyncGenerator — lo retornamos directamente para usar for-await-of
   return result.stream;
 };
