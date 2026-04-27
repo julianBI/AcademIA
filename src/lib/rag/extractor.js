@@ -1,3 +1,6 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 export async function extractTextFromFile(file) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type;
@@ -5,9 +8,7 @@ export async function extractTextFromFile(file) {
 
   try {
     if (mimeType === "application/pdf" || fileName.endsWith(".pdf")) {
-      const pdf = await import("pdf-parse");
-      // Algunos entornos requieren .default, otros no. Manejamos ambos.
-      const pdfParse = pdf.default || pdf;
+      const pdfParse = require("pdf-parse");
       const data = await pdfParse(buffer);
       return data.text;
     } 
@@ -16,7 +17,7 @@ export async function extractTextFromFile(file) {
       mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
       fileName.endsWith(".docx")
     ) {
-      const mammoth = await import("mammoth");
+      const mammoth = require("mammoth");
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
     }

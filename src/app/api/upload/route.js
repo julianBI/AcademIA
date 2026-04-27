@@ -37,12 +37,15 @@ export async function POST(req) {
     let text = "";
     try {
       text = await extractTextFromFile(file);
+      console.log(`[Upload Debug] Texto extraído: ${text?.length || 0} caracteres`);
     } catch (e) {
+      console.error("[Upload Debug] Error en extracción:", e.message);
       return NextResponse.json({ error: e.message }, { status: 400 });
     }
 
     // 3. Crear chunks
     const chunks = createChunks(text);
+    console.log(`[Upload Debug] Chunks generados: ${chunks.length}`);
 
     if (chunks.length === 0) {
       return NextResponse.json({ error: "No se pudo extraer texto válido del documento." }, { status: 400 });
