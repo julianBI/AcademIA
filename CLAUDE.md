@@ -1,63 +1,59 @@
 # CLAUDE.md — AcademIA
 > Contexto de proyecto para Claude Code / Agentes de IA
-> Última actualización: 27 de Abril 2026 (Core RAG completado)
+> Última actualización: 28 de Abril 2026 (Resiliencia y Analíticas)
 
 ---
 
 ## ¿Qué es este proyecto?
 
-**AcademIA** es una WebApp de tutoría virtual inteligente para estudiantes universitarios. Permite a los estudiantes subir sus materiales de estudio (PDFs, Word, TXT) e interactuar con un chatbot contextualizado que responde **exclusivamente** basándose en esos documentos usando una arquitectura RAG con **Gemini 2.5 Flash** y búsqueda vectorial en Supabase.
+**AcademIA** es una WebApp de tutoría virtual inteligente para estudiantes universitarios. Permite a los estudiantes subir sus materiales de estudio (PDFs, Word, TXT) e interactuar con un chatbot contextualizado que responde **exclusivamente** basándose en esos documentos usando una arquitectura RAG híbrida con **Gemini Flash/Pro** y búsqueda vectorial en Supabase.
 
 ---
 
 ## Stack Técnico (Actualizado)
 
 ```
-Frontend:  Next.js 15 (App Router) + React + Tailwind CSS v4
-Backend:   Next.js API Routes (server-side)
+Frontend:  Next.js 16 (App Router) + React 19 + Tailwind CSS v4
+Backend:   Next.js API Routes (Node.js runtime)
 Base de datos: Supabase (PostgreSQL + Auth + Storage + pgvector)
-IA:        Google Gemini 2.5 Flash (Generación con 1M Context Window)
-Seguridad: Cifrado AES-256 para API Keys de usuario en la base de datos
-RAG:       Long Context RAG (sin búsqueda vectorial, carga de contexto completo)
+IA:        Google Gemini 1.5/2.0 Flash (Fallback automático a Pro)
+Seguridad: Cifrado AES-256 para API Keys de usuario
+RAG:       Híbrido (Long Context + Búsqueda Vectorial HNSW 768d)
+Visualización: Recharts para Analíticas de Estudio
 ```
 
 ---
 
-## Estructura de Carpetas (Actual)
+## Estructura de Carpetas (Actualizada)
 
 ```
 academIA/
 ├── src/
 │   ├── app/
-│   │   ├── page.js                        # Landing Page (pública)
 │   │   ├── (auth)/                        # login/ y register/
 │   │   ├── (app)/
-│   │   │   ├── dashboard/page.js          # Dashboard de materias
+│   │   │   ├── dashboard/page.js          # Vista general
+│   │   │   ├── analytics/page.js          # Estadísticas (Recharts)
 │   │   │   └── subjects/
+│   │   │       ├── page.js                # Lista de materias
 │   │   │       └── [id]/
-│   │   │           ├── page.js            # Detalle de materia
-│   │   │           ├── chat/page.js       # Chatbot RAG Socrático
+│   │   │           ├── page.js            # Gestión de documentos
+│   │   │           ├── chat/page.js       # Chatbot RAG
 │   │   │           └── quiz/page.js       # Evaluación dinámica
 │   │   ├── api/
-│   │   │   ├── upload/route.js            # Extracción + Embeddings
+│   │   │   ├── upload/route.js            # Ingesta (Embeddings 768d)
 │   │   │   ├── chat/route.js              # Streaming RAG
-│   │   │   ├── quiz/route.js              # Generación JSON Quiz
-│   │   │   └── user/key/route.js          # Gestión segura de API Keys
-│   │   ├── layout.js
-│   │   └── globals.css
+│   │   │   ├── quiz/route.js              # Quizzes con Fallback
+│   │   │   └── analytics/route.js         # Métricas de uso
 │   ├── components/
-│   │   ├── chat/ (ChatWindow, ApiKeyModal, MessageBubble)
-│   │   ├── documents/ (FileUploader)
-│   │   ├── quiz/ (QuizQuestion, QuizResults)
-│   │   └── auth/ (LogoutButton)
+│   │   ├── chat/ (ChatWindow, MessageBubble, ApiKeyModal)
+│   │   ├── documents/ (FileUploader, DeleteConfirmModal)
+│   │   ├── layout/ (Sidebar, Navbar)
+│   │   └── ui/ (Cards, Buttons, Charts)
 │   ├── lib/
+│   │   ├── gemini/ (client, prompts)      # Lógica de Fallback
 │   │   ├── supabase/ (client, server)
-│   │   ├── gemini/ (client, prompts)
-│   │   ├── rag/ (chunker, extractor)
-│   │   └── encryption.js                  # Lógica de cifrado AES
-├── supabase-master-schema.sql             # Esquema completo DB
-├── LogicaDB.md                            # Documentación técnica DB
-└── README.md                              # Guía profesional
+│   │   └── encryption.js                  # Cifrado AES
 ```
 
 ---
@@ -68,13 +64,14 @@ academIA/
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
+ENCRYPTION_KEY=tu_clave_de_32_bytes
 ```
 
 ---
 
-## Guía de Desarrollo RAG (Long Context)
+## Guía de Desarrollo (Fallback & RAG)
 
-1. **Ingesta**: El texto se extrae en `extractor.js`, se divide en `chunker.js` y se guarda en `document_chunks` (sin embeddings).
-2. **Recuperación**: El sistema carga TODOS los chunks de la materia activa directamente de la base de datos.
-3. **Generación**: Se envía el material completo (aprovechando los 1M tokens de Gemini 2.5 Flash) junto con la pregunta en `chat/route.js`.
-4. **Seguridad**: Siempre usar `getUserGeminiKey()` en el backend para recuperar la clave cifrada del usuario.
+1. **Robustez**: Todas las llamadas a Gemini deben usar `generateContentWithFallback` o `generateChatResponse` de `lib/gemini/client.js` para manejar errores de cuota 429.
+2. **Priorización**: Los modelos Flash se intentan primero debido a sus límites gratuitos superiores.
+3. **Ingesta**: Los documentos se dividen en chunks de ~800 caracteres y se generan embeddings de 768 dimensiones (reducidos desde 3072).
+4. **Seguridad**: Nunca hardcodear API Keys. Usar siempre el sistema de cifrado para las llaves de los usuarios.

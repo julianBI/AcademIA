@@ -41,10 +41,17 @@ Este documento detalla la hoja de ruta para el desarrollo de la plataforma Acade
 - [x] Actualización de `CLAUDE.md`.
 - [x] Despliegue a GitHub (`https://github.com/julianBI/AcademIA.git`).
 
+## 📍 Fase 7: Resiliencia y Analíticas (COMPLETADO ✅)
+- [x] **Mecanismo de Fallback**: Implementación de reintentos automáticos entre modelos Gemini (Flash/Pro) para evitar errores de cuota (429).
+- [x] **Panel de Analíticas**: Visualización de progreso de estudio, puntajes de quizzes y actividad usando Recharts.
+- [x] **Navegación Avanzada**: Nueva Sidebar persistente para una experiencia de usuario fluida.
+- [x] **Gestión de Documentos**: Modal de confirmación para borrado de archivos y limpieza de base de datos.
+- [x] **Refactorización de API**: Estandarización de respuestas y manejo de errores resiliente en Chat y Quiz.
+
 ---
 
 ## 🔜 Próximos Pasos (Opcionales / Futuros)
-1. **Soporte Multimedia**: Extracción de texto desde imágenes (OCR) usando Gemini Vision.
-2. **Historial de Chat**: Persistencia de sesiones de chat en la base de datos (actualmente es volátil por sesión).
-3. **Métricas Reales**: Poblar `study_metrics` con eventos reales de uso.
-4. **Optimización de Chunks**: Ajustar el solapamiento (*overlap*) para mejorar la calidad del RAG.
+1. **Soporte Multimedia**: Extracción de texto desde imágenes (OCR) usando Gemini Vision para notas a mano.
+2. **Historial de Chat Persistente**: Guardar y recuperar sesiones de chat antiguas desde la base de datos.
+3. **Gamificación**: Sistema de logros y rachas de estudio para incentivar el uso diario.
+4. **Optimización de Contexto**: Implementar un híbrido entre búsqueda vectorial y long-context para archivos masivos (+100MB).
