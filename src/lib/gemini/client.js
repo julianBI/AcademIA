@@ -29,7 +29,7 @@ const fetchAvailableModels = async (apiKey) => {
  * Obtiene modelos de chat ordenados por prioridad (Flash > Pro).
  * Flash tiene mejor free tier, por eso se prioriza.
  */
-const getChatModelsSorted = async (apiKey) => {
+export const getChatModelsSorted = async (apiKey) => {
   const models = await fetchAvailableModels(apiKey);
 
   // Filtrar solo modelos que soportan generateContent
@@ -40,17 +40,22 @@ const getChatModelsSorted = async (apiKey) => {
 
   // Ordenar por prioridad: Flash primero (tiene mejor free tier)
   const priority = [
-    "flash",
     "1.5-flash",
     "2.0-flash",
+    "flash",
     "1.5-pro",
-    "2.5-pro",
     "1.0-pro",
+    "pro",
   ];
 
   chatModels.sort((a, b) => {
-    const aIdx = priority.findIndex(p => a.name.includes(p));
-    const bIdx = priority.findIndex(p => b.name.includes(p));
+    let aIdx = priority.findIndex(p => a.name.includes(p));
+    let bIdx = priority.findIndex(p => b.name.includes(p));
+    
+    // Si no está en la lista de prioridad, poner al final
+    if (aIdx === -1) aIdx = priority.length;
+    if (bIdx === -1) bIdx = priority.length;
+    
     return aIdx - bIdx;
   });
 
@@ -108,11 +113,49 @@ export const generateChatResponse = async (prompt, systemInstruction, apiKey) =>
   }
 
   // Ningún modelo tiene cuota disponible
-  const retryDelay = lastError?.message?.match(/retry in ([\d.]+)s/)?.[1] || "desconocido";
+  const retryDelay = lastError?.message?.match(/retry in ([\d.]+)s/)?.[1] || "30";
   throw new Error(
     `Todos los modelos sin cuota. Esperar ${retryDelay} segundos. ` +
     `Verificar límites en https://ai.dev/rate-limit`
   );
+};
+
+/**
+ * Genera contenido (no streaming) con fallback.
+ */
+export const generateContentWithFallback = async (prompt, options = {}, apiKey) => {
+  const genAI = getGeminiClient(apiKey);
+  const chatModels = await getChatModelsSorted(apiKey);
+  
+  let lastError = null;
+
+  for (const modelName of chatModels) {
+    try {
+      console.log(`[Fallback] Intentando con: ${modelName}`);
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        systemInstruction: options.systemInstruction 
+      });
+      
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: options.generationConfig
+      });
+      
+      return result.response;
+    } catch (error) {
+      const isQuotaError = error.message?.includes("429") || error.message?.includes("quota");
+      if (isQuotaError) {
+        console.warn(`[Fallback] ${modelName} sin cuota.`);
+        lastError = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  const retryDelay = lastError?.message?.match(/retry in ([\d.]+)s/)?.[1] || "30";
+  throw new Error(`Cuota agotada en todos los modelos. Reintentar en ${retryDelay}s.`);
 };
 
 // Generar embeddings usando el modelo de embeddings de Gemini
