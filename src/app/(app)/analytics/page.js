@@ -1,12 +1,51 @@
-import { BarChart3, Clock, Target, TrendingUp, Zap } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { BarChart3, Clock, Target, TrendingUp, Zap, Loader2 } from "lucide-react";
 
 export default function AnalyticsPage() {
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch("/api/analytics");
+      if (res.ok) {
+        const analyticsData = await res.json();
+        setData(analyticsData);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-teal mb-4" />
+        <p className="text-brand-steel">Cargando métricas...</p>
+      </div>
+    );
+  }
+
   const stats = [
-    { label: "Tiempo de Estudio", value: "12h 45m", icon: Clock, color: "text-brand-teal", bg: "bg-brand-teal/10" },
-    { label: "Preguntas al Tutor", value: "158", icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50" },
-    { label: "Promedio Quizzes", value: "88%", icon: Target, color: "text-green-600", bg: "bg-green-50" },
-    { label: "Progreso Semanal", value: "+15%", icon: TrendingUp, color: "text-brand-pink", bg: "bg-brand-pink/10" },
+    { label: "Tiempo de Estudio", value: data?.studyTimeFormatted || "0m", icon: Clock, color: "text-brand-teal", bg: "bg-brand-teal/10" },
+    { label: "Preguntas al Tutor", value: data?.questionsCount || 0, icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50" },
+    { label: "Promedio Quizzes", value: data?.averageQuizScore ? `${data.averageQuizScore}%` : "N/A", icon: Target, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Progreso Semanal", value: data?.weeklyProgress !== undefined ? `${data.weeklyProgress >= 0 ? '+' : ''}${data.weeklyProgress}%` : "0%", icon: TrendingUp, color: "text-brand-pink", bg: "bg-brand-pink/10" },
   ];
+
+  // Normalize weekly activity for chart (max height = 100%)
+  const maxActivity = data?.weeklyActivity ? Math.max(...data.weeklyActivity, 1) : 1;
+  const weeklyActivityPercentages = data?.weeklyActivity
+    ? data.weeklyActivity.map(v => Math.round((v / maxActivity) * 100))
+    : [0, 0, 0, 0, 0, 0, 0];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -28,21 +67,21 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Placeholder para Gráficos */}
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-8 rounded-3xl border border-brand-steel/10 shadow-sm min-h-[300px] flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold text-brand-taupe flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-brand-teal" /> Actividad Semanal
             </h3>
-            <span className="text-sm text-brand-steel italic">Próximamente datos reales</span>
+            <span className="text-sm text-brand-steel">Quizzes completados</span>
           </div>
           <div className="flex-1 flex items-end justify-between gap-2 px-4">
-            {[40, 70, 45, 90, 65, 30, 50].map((h, i) => (
+            {weeklyActivityPercentages.map((h, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div 
-                  className="w-full bg-brand-teal/20 rounded-t-lg transition-all hover:bg-brand-teal/40"
-                  style={{ height: `${h}%` }}
+                <div
+                  className="w-full bg-brand-teal rounded-t-lg transition-all hover:bg-brand-teal/60 min-h-[4px]"
+                  style={{ height: `${Math.max(h, 4)}%` }}
                 ></div>
                 <span className="text-xs font-bold text-brand-steel">
                   {['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}
@@ -57,29 +96,54 @@ export default function AnalyticsPage() {
             <Target className="h-10 w-10 text-brand-pink" />
           </div>
           <h3 className="text-xl font-bold text-brand-taupe mb-2">Dominio por Materia</h3>
-          <p className="text-brand-steel max-w-xs">
-            Estamos procesando tus resultados de quizzes para mostrarte en qué temas eres un experto.
+          <p className="text-brand-steel max-w-xs mb-6">
+            Promedio de tus resultados en quizzes por materia
           </p>
-          <div className="mt-8 w-full space-y-4">
-             <div className="space-y-1">
-               <div className="flex justify-between text-sm font-bold">
-                 <span>Estructura de Datos</span>
-                 <span>92%</span>
-               </div>
-               <div className="h-2 bg-brand-steel/10 rounded-full overflow-hidden">
-                 <div className="h-full bg-brand-teal w-[92%]"></div>
-               </div>
-             </div>
-             <div className="space-y-1">
-               <div className="flex justify-between text-sm font-bold">
-                 <span>Física Universitaria</span>
-                 <span>75%</span>
-               </div>
-               <div className="h-2 bg-brand-steel/10 rounded-full overflow-hidden">
-                 <div className="h-full bg-brand-pink w-[75%]"></div>
-               </div>
-             </div>
+          <div className="mt-4 w-full space-y-4">
+            {data?.masteryBySubject && data.masteryBySubject.length > 0 ? (
+              data.masteryBySubject.map((subject, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>{subject.name}</span>
+                    <span>{subject.score}%</span>
+                  </div>
+                  <div className="h-2 bg-brand-steel/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${subject.score}%`,
+                        backgroundColor: subject.color || "#16697A"
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-brand-steel/60 text-sm italic">
+                Completa quizzes para ver tu dominio por materia
+              </p>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-6 rounded-2xl border border-brand-steel/10">
+          <h4 className="font-bold text-brand-taupe mb-2 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-brand-teal" /> Tiempo de Estudio
+          </h4>
+          <p className="text-sm text-brand-steel">
+            Total de minutos registrados en sesiones de estudio. Se registra automáticamente cuando completas quizzes o usas el tutor.
+          </p>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-brand-steel/10">
+          <h4 className="font-bold text-brand-taupe mb-2 flex items-center gap-2">
+            <Target className="h-4 w-4 text-green-600" /> Promedio Quizzes
+          </h4>
+          <p className="text-sm text-brand-steel">
+            Promedio de tu puntuación en todos los quizzes completados. Se calcula como: <code className="bg-brand-blush/20 px-1 rounded">SUM(scores) / COUNT(quizzes)</code>
+          </p>
         </div>
       </div>
     </div>

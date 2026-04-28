@@ -48,13 +48,28 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Debido a las claves foráneas (ON DELETE CASCADE), 
-    // borrar el documento borrará automáticamente sus chunks.
+    // Primero verificar que el documento existe y pertenece al usuario
+    const { data: docToDelete, error: findError } = await supabase
+      .from("documents")
+      .select("id, name, user_id")
+      .eq("id", id)
+      .single();
+
+    if (findError || !docToDelete) {
+      return NextResponse.json({ error: "Documento no encontrado" }, { status: 404 });
+    }
+
+    if (docToDelete.user_id !== user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    // Due to foreign keys (ON DELETE CASCADE),
+    // deleting the document will automatically delete its chunks.
     const { error } = await supabase
       .from("documents")
       .delete()
       .eq("id", id)
-      .eq("user_id", user.id); // Seguridad extra
+      .eq("user_id", user.id);
 
     if (error) throw error;
 

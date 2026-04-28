@@ -4,6 +4,44 @@ import { getGeminiClient } from "@/lib/gemini/client";
 import { QUIZ_GENERATION_PROMPT } from "@/lib/gemini/prompts";
 import { getUserGeminiKey } from "@/lib/encryption";
 
+/**
+ * Lista modelos disponibles desde la API de Google.
+ */
+const fetchAvailableModels = async (apiKey) => {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to list models: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.models || [];
+};
+
+/**
+ * Obtiene el mejor modelo disponible para quizzes, priorizando Flash.
+ */
+const getBestQuizModel = async (apiKey) => {
+  const models = await fetchAvailableModels(apiKey);
+
+  const chatModels = models.filter(m =>
+    m.supportedGenerationMethods?.includes("generateContent") &&
+    m.name.includes("gemini")
+  );
+
+  // Ordenar por prioridad: Flash primero (tiene mejor free tier)
+  const priority = ["flash", "1.5-flash", "2.0-flash", "2.5-flash", "1.5-pro", "2.5-pro"];
+  chatModels.sort((a, b) => {
+    const aIdx = priority.findIndex(p => a.name.includes(p));
+    const bIdx = priority.findIndex(p => b.name.includes(p));
+    return aIdx - bIdx;
+  });
+
+  const best = chatModels[0];
+  if (!best) throw new Error("No hay modelos disponibles");
+  return best.name.replace("models/", "");
+};
+
 export async function POST(req) {
   try {
     const { subjectId, questionCount = 5 } = await req.json();
@@ -26,7 +64,6 @@ export async function POST(req) {
     }
 
     // 1. Obtener todos los fragmentos (chunks) de la materia para dar contexto a Gemini
-    // Limitamos a 200 chunks por seguridad (dependiendo del tamaño de tus documentos)
     const { data: chunks, error: chunksError } = await supabase
       .from('document_chunks')
       .select('content')
@@ -48,10 +85,14 @@ export async function POST(req) {
       .replace("{context}", contextText)
       .replace("{count}", questionCount.toString());
 
-    // 3. Llamar a Gemini exigiendo formato JSON
+    // 3. Obtener el mejor modelo disponible
+    const modelName = await getBestQuizModel(userApiKey);
+    console.log(`[Quiz] Usando modelo: ${modelName}`);
+
+    // 4. Llamar a Gemini exigiendo formato JSON
     const genAI = getGeminiClient(userApiKey);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+    const model = genAI.getGenerativeModel({
+      model: modelName,
       generationConfig: {
         responseMimeType: "application/json",
       }
@@ -59,17 +100,17 @@ export async function POST(req) {
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    
+
     let generatedQuestions;
     try {
       const parsed = JSON.parse(responseText);
-      generatedQuestions = parsed.questions || parsed; // Dependiendo de cómo lo devuelva exactamente
+      generatedQuestions = parsed.questions || parsed;
     } catch (err) {
       console.error("Error parseando respuesta JSON de Gemini:", responseText);
       return NextResponse.json({ error: "La IA no generó un formato JSON válido." }, { status: 500 });
     }
 
-    // 4. Guardar el cuestionario generado en la BD (estado: incompleto, score: null)
+    // 5. Guardar el cuestionario generado en la BD
     const { data: quizData, error: quizError } = await supabase
       .from('quizzes')
       .insert({
@@ -82,19 +123,18 @@ export async function POST(req) {
 
     if (quizError) {
       console.error("Error guardando quiz en BD:", quizError);
-      // Podemos devolver las preguntas igual aunque falle guardar el historial
       return NextResponse.json({ quizId: "temp_id", questions: generatedQuestions });
     }
 
-    return NextResponse.json({ 
-      quizId: quizData.id, 
-      questions: generatedQuestions 
+    return NextResponse.json({
+      quizId: quizData.id,
+      questions: generatedQuestions
     });
 
   } catch (error) {
     console.error("API Quiz Error:", error);
     return NextResponse.json(
-      { error: "Error interno generando cuestionario." },
+      { error: `Error interno generando cuestionario: ${error.message}` },
       { status: 500 }
     );
   }

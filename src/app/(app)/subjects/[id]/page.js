@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, MessageSquare, BookOpen, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import FileUploader from "@/components/documents/FileUploader";
+import DeleteConfirmModal from "@/components/documents/DeleteConfirmModal";
 
 export default function SubjectDetailPage({ params }) {
   const resolvedParams = use(params);
@@ -50,13 +51,20 @@ export default function SubjectDetailPage({ params }) {
   }, [subjectId]);
 
   const [deletingDocId, setDeletingDocId] = useState(null);
+  const [deletingDocName, setDeletingDocName] = useState("");
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
 
-  const handleDeleteDoc = async (id) => {
-    if (!window.confirm("¿Borrar este documento?")) return;
-    
+  const handleDeleteDoc = (id, docName) => {
     setDeletingDocId(id);
+    setDeletingDocName(docName);
+    setIsDeletingDoc(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingDocId) return;
+    setIsDeletingDoc(true);
     try {
-      const res = await fetch(`/api/documents?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/documents?id=${deletingDocId}`, { method: "DELETE" });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || "Error al eliminar");
@@ -64,10 +72,11 @@ export default function SubjectDetailPage({ params }) {
       toast.success("Documento eliminado");
       fetchData();
     } catch (err) {
-      console.error("Delete document error:", err);
       toast.error(err.message);
     } finally {
+      setIsDeletingDoc(false);
       setDeletingDocId(null);
+      setDeletingDocName("");
     }
   };
 
@@ -168,8 +177,8 @@ export default function SubjectDetailPage({ params }) {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={() => handleDeleteDoc(doc.id)}
+                  <button
+                    onClick={() => handleDeleteDoc(doc.id, doc.name)}
                     disabled={deletingDocId === doc.id}
                     className="p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                   >
@@ -191,6 +200,17 @@ export default function SubjectDetailPage({ params }) {
           <FileUploader subjectId={subjectId} onUploadSuccess={fetchData} />
         </div>
       </div>
+
+      <DeleteConfirmModal
+        isOpen={deletingDocId !== null}
+        documentName={deletingDocName}
+        title="¿Borrar documento?"
+        message="Esta acción no se puede deshacer."
+        confirmText="Borrar"
+        isDeleting={isDeletingDoc}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeletingDocId(null)}
+      />
     </div>
   );
 }

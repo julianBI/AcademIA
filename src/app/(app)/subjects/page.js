@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Plus, Search, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import CreateSubjectModal from "@/components/subjects/CreateSubjectModal";
+import DeleteConfirmModal from "@/components/documents/DeleteConfirmModal";
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function SubjectsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingName, setDeletingName] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchSubjects = async () => {
     try {
@@ -32,17 +35,32 @@ export default function SubjectsPage() {
     fetchSubjects();
   }, []);
 
-  const handleDeleteSubject = async (e, id) => {
-    // Stop the event from reaching the card's onClick (which navigates)
+  const handleDeleteSubject = async (e, id, name) => {
     e.stopPropagation();
 
-    if (!window.confirm("¿Estás seguro de que quieres eliminar esta materia? Se borrarán todos los documentos y chats asociados.")) {
-      return;
+    // Verificar si hay documentos asociados a esta materia
+    try {
+      const res = await fetch(`/api/documents?subjectId=${id}`);
+      if (res.ok) {
+        const docs = await res.json();
+        if (docs.length > 0) {
+          toast.error(`No puedes borrar "${name}". Primero borra los ${docs.length} documento(s) asociados.`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Error checking documents:", err);
     }
 
     setDeletingId(id);
+    setDeletingName(name);
+  };
+
+  const confirmDeleteSubject = async () => {
+    if (!deletingId) return;
+    setIsDeleting(true);
     try {
-      const res = await fetch(`/api/subjects?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/subjects?id=${deletingId}`, { method: "DELETE" });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || "Error al eliminar");
@@ -53,7 +71,9 @@ export default function SubjectsPage() {
       console.error("Delete subject error:", err);
       toast.error(err.message);
     } finally {
+      setIsDeleting(false);
       setDeletingId(null);
+      setDeletingName("");
     }
   };
 
@@ -112,7 +132,7 @@ export default function SubjectsPage() {
             >
               <button
                 type="button"
-                onClick={(e) => handleDeleteSubject(e, subject.id)}
+                onClick={(e) => handleDeleteSubject(e, subject.id, subject.name)}
                 disabled={deletingId === subject.id}
                 className="absolute top-4 right-4 p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10 disabled:opacity-50"
               >
@@ -142,10 +162,21 @@ export default function SubjectsPage() {
         </div>
       )}
 
-      <CreateSubjectModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <CreateSubjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onSuccess={fetchSubjects}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deletingId !== null}
+        documentName={deletingName}
+        title="¿Borrar materia?"
+        message="Se borrarán todos los documentos y chats asociados. Esta acción no se puede deshacer."
+        confirmText="Borrar"
+        isDeleting={isDeleting}
+        onConfirm={confirmDeleteSubject}
+        onCancel={() => setDeletingId(null)}
       />
     </div>
   );
