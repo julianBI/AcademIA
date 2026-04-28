@@ -30,8 +30,7 @@ export async function POST(req) {
     const { data: chunks, error: chunksError } = await supabase
       .from('document_chunks')
       .select('content')
-      .eq('subject_id', subjectId)
-      .limit(200);
+      .eq('subject_id', subjectId);
 
     if (chunksError) {
       return NextResponse.json({ error: "Error obteniendo documentos para el cuestionario." }, { status: 500 });

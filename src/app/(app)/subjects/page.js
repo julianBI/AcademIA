@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpen, Plus, Search, Loader2, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 import CreateSubjectModal from "@/components/subjects/CreateSubjectModal";
 
 export default function SubjectsPage() {
+  const router = useRouter();
   const [subjects, setSubjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchSubjects = async () => {
     try {
@@ -31,20 +33,27 @@ export default function SubjectsPage() {
   }, []);
 
   const handleDeleteSubject = async (e, id) => {
-    e.preventDefault();
+    // Stop the event from reaching the card's onClick (which navigates)
     e.stopPropagation();
 
-    if (!confirm("¿Estás seguro de que quieres eliminar esta materia? Se borrarán todos los documentos y chats asociados.")) {
+    if (!window.confirm("¿Estás seguro de que quieres eliminar esta materia? Se borrarán todos los documentos y chats asociados.")) {
       return;
     }
 
+    setDeletingId(id);
     try {
       const res = await fetch(`/api/subjects?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al eliminar");
+      }
       toast.success("Materia eliminada");
       fetchSubjects();
     } catch (err) {
+      console.error("Delete subject error:", err);
       toast.error(err.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -93,16 +102,25 @@ export default function SubjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSubjects.map((subject) => (
-            <Link 
+            <div 
               key={subject.id} 
-              href={`/subjects/${subject.id}`}
-              className="group relative bg-white p-6 rounded-3xl border border-brand-steel/10 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all"
+              onClick={() => router.push(`/subjects/${subject.id}`)}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/subjects/${subject.id}`); }}
+              className="group relative bg-white p-6 rounded-3xl border border-brand-steel/10 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer"
             >
               <button
+                type="button"
                 onClick={(e) => handleDeleteSubject(e, subject.id)}
-                className="absolute top-4 right-4 p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10"
+                disabled={deletingId === subject.id}
+                className="absolute top-4 right-4 p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10 disabled:opacity-50"
               >
-                <Trash2 className="h-5 w-5" />
+                {deletingId === subject.id ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-5 w-5" />
+                )}
               </button>
 
               <div 
@@ -119,7 +137,7 @@ export default function SubjectsPage() {
                 <span>•</span>
                 <span>{new Date(subject.created_at).toLocaleDateString()}</span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

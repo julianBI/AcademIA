@@ -33,46 +33,27 @@ export async function POST(req) {
       );
     }
 
-    // 3. Generar embedding de la pregunta
-    let queryEmbedding;
-    try {
-      queryEmbedding = await generateEmbedding(message, userApiKey);
-      console.log(`[Chat] Embedding generado, dims: ${queryEmbedding.length}`);
-    } catch (err) {
+    // 3. Obtener TODOS los chunks de la materia (Long Context RAG)
+    // Gemini 2.5 Flash soporta hasta 1M de tokens, lo que permite enviar todo el material.
+    const { data: chunks, error: chunksError } = await supabase
+      .from("document_chunks")
+      .select("content")
+      .eq("subject_id", subjectId);
+
+    if (chunksError) {
+      console.error("[Chat] Error obteniendo chunks:", chunksError);
       return NextResponse.json(
-        { error: "Error generando embedding de Gemini: " + err.message },
+        { error: "Error recuperando el material de estudio: " + chunksError.message },
         { status: 500 }
       );
     }
 
-    // 4. Buscar chunks relevantes en Supabase
-    const { data: relevantChunks, error: rpcError } = await supabase.rpc(
-      "match_document_chunks",
-      {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.0,   // Sin threshold — traemos lo que haya
-        match_count: 10,
-        p_subject_id: subjectId,
-      }
-    );
+    console.log(`[Chat] Chunks recuperados: ${chunks?.length ?? 0}`);
 
-    if (rpcError) {
-      console.error("[Chat] RPC Error:", rpcError);
-      return NextResponse.json(
-        { error: "Error en búsqueda vectorial: " + rpcError.message },
-        { status: 500 }
-      );
-    }
-
-    console.log(`[Chat] Chunks encontrados: ${relevantChunks?.length ?? 0}`);
-    if (relevantChunks?.length > 0) {
-      console.log(`[Chat] Mejor similitud: ${relevantChunks[0].similarity?.toFixed(4)}`);
-    }
-
-    // 5. Construir contexto
+    // 4. Construir contexto completo
     let contextText =
-      relevantChunks && relevantChunks.length > 0
-        ? relevantChunks.map((c) => c.content).join("\n\n---\n\n")
+      chunks && chunks.length > 0
+        ? chunks.map((c) => c.content).join("\n\n---\n\n")
         : "No hay documentos cargados en esta materia aún.";
 
     // 6. System prompt

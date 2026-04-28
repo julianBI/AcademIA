@@ -66,12 +66,11 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
 ---
 
-## 📖 Cómo funciona el RAG en AcademIA
+## 📖 Cómo funciona el Long Context RAG en AcademIA
 
-1. **Ingesta**: El texto de tus archivos se divide en fragmentos (*chunks*).
-2. **Vectorización**: Cada fragmento se convierte en un vector numérico que representa su significado.
-3. **Búsqueda**: Cuando haces una pregunta, la IA busca los fragmentos más similares en milisegundos.
-4. **Contexto**: Los fragmentos encontrados se envían a Gemini 2.5 Flash junto con tu pregunta para generar una respuesta precisa y fundamentada.
+1. **Ingesta**: El texto de tus archivos se divide en fragmentos (*chunks*) y se almacena en la base de datos.
+2. **Contexto Masivo**: Cuando haces una pregunta, el sistema carga **TODO** el material de la materia activa.
+3. **Razonamiento Profundo**: Gracias a los **1.0M de tokens de contexto de Gemini 2.5 Flash**, la IA lee todos tus documentos simultáneamente para responder con una precisión superior, sin perder detalles por filtros de búsqueda.
 
 Para más detalles técnicos, consulta [LogicaDB.md](./LogicaDB.md).
 

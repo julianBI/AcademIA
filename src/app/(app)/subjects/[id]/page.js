@@ -49,16 +49,25 @@ export default function SubjectDetailPage({ params }) {
     fetchData();
   }, [subjectId]);
 
+  const [deletingDocId, setDeletingDocId] = useState(null);
+
   const handleDeleteDoc = async (id) => {
-    if (!confirm("¿Borrar este documento?")) return;
+    if (!window.confirm("¿Borrar este documento?")) return;
     
+    setDeletingDocId(id);
     try {
       const res = await fetch(`/api/documents?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al eliminar");
+      }
       toast.success("Documento eliminado");
       fetchData();
     } catch (err) {
+      console.error("Delete document error:", err);
       toast.error(err.message);
+    } finally {
+      setDeletingDocId(null);
     }
   };
 
@@ -161,9 +170,14 @@ export default function SubjectDetailPage({ params }) {
 
                   <button 
                     onClick={() => handleDeleteDoc(doc.id)}
-                    className="p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    disabled={deletingDocId === doc.id}
+                    className="p-2 text-brand-steel hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    {deletingDocId === doc.id ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
               ))}

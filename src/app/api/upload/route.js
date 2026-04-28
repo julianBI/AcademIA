@@ -76,42 +76,28 @@ export async function POST(req) {
       return NextResponse.json({ error: "Error al registrar el documento en la base de datos." }, { status: 500 });
     }
 
-    // 5. Generar embeddings y guardar los chunks
-    let chunksCreated = 0;
+    // 5. Guardar los chunks (Sin embeddings - Long Context RAG)
+    const chunksToInsert = chunks.map((chunkContent, i) => ({
+      document_id: docData.id,
+      subject_id: subjectId,
+      user_id: user.id,
+      content: chunkContent,
+      chunk_index: i
+    }));
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkContent = chunks[i];
-      let embedding;
-      
-      try {
-        embedding = await generateEmbedding(chunkContent, apiKey);
-      } catch (err) {
-        console.error("Error generando embedding para el chunk", i, err);
-        continue; // Si falla uno, intentamos con el siguiente (o podrías hacer throw)
-      }
+    const { error: chunksError } = await supabase
+      .from('document_chunks')
+      .insert(chunksToInsert);
 
-      const { error: chunkError } = await supabase
-        .from('document_chunks')
-        .insert({
-          document_id: docData.id,
-          subject_id: subjectId,
-          user_id: user.id,
-          content: chunkContent,
-          chunk_index: i,
-          embedding: embedding
-        });
-
-      if (chunkError) {
-        console.error("Error guardando el chunk en BD:", chunkError);
-      } else {
-        chunksCreated++;
-      }
+    if (chunksError) {
+      console.error("Error guardando chunks en BD:", chunksError);
+      return NextResponse.json({ error: "Error guardando el contenido procesado." }, { status: 500 });
     }
 
     return NextResponse.json({ 
       documentId: docData.id, 
-      chunksCreated, 
-      message: "Procesamiento RAG completado exitosamente." 
+      chunksCreated: chunks.length, 
+      message: "Procesamiento Long Context RAG completado exitosamente." 
     });
 
   } catch (error) {

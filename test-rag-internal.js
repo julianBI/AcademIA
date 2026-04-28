@@ -7,7 +7,8 @@ async function testRAG() {
   const apiKey = "PON_TU_API_KEY_AQUI_O_USA_ENV"; // O extraer de la DB
 
   // 1. Simular Embedding de Pregunta
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || apiKey);
+  // IMPORTANTE: En producción la key se recupera cifrada de la DB por usuario.
+  const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
 
   console.log("Probando generación de embedding...");

@@ -16,8 +16,9 @@
 Frontend:  Next.js 15 (App Router) + React + Tailwind CSS v4
 Backend:   Next.js API Routes (server-side)
 Base de datos: Supabase (PostgreSQL + Auth + Storage + pgvector)
-IA:        Google Gemini 2.5 Flash (Generación) + Gemini Embedding 2 (Vectores)
+IA:        Google Gemini 2.5 Flash (Generación con 1M Context Window)
 Seguridad: Cifrado AES-256 para API Keys de usuario en la base de datos
+RAG:       Long Context RAG (sin búsqueda vectorial, carga de contexto completo)
 ```
 
 ---
@@ -67,14 +68,13 @@ academIA/
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
-GEMINI_API_KEY=AIza... (Opcional, se prioriza la del usuario en DB)
 ```
 
 ---
 
-## Guía de Desarrollo RAG
+## Guía de Desarrollo RAG (Long Context)
 
-1. **Ingesta**: El texto se extrae en `extractor.js`, se divide en `chunker.js` y se guarda con embeddings en `upload/route.js`.
-2. **Recuperación**: El chat usa la función RPC `match_document_chunks` de Supabase para buscar contexto.
-3. **Generación**: Se envía el contexto y la pregunta a Gemini 2.5 Flash en `chat/route.js`.
+1. **Ingesta**: El texto se extrae en `extractor.js`, se divide en `chunker.js` y se guarda en `document_chunks` (sin embeddings).
+2. **Recuperación**: El sistema carga TODOS los chunks de la materia activa directamente de la base de datos.
+3. **Generación**: Se envía el material completo (aprovechando los 1M tokens de Gemini 2.5 Flash) junto con la pregunta en `chat/route.js`.
 4. **Seguridad**: Siempre usar `getUserGeminiKey()` en el backend para recuperar la clave cifrada del usuario.
